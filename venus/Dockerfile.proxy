@@ -1,0 +1,4 @@
+# Stock caddy suffices — NPM terminates TLS and does DNS-less upstreams, so
+# the upstream xcaddy build (cloud DNS plugins) is unnecessary weight.
+FROM caddy:2.11.4-alpine
+COPY venus/Caddyfile.venus /etc/caddy/Caddyfile

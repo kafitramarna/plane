@@ -19,6 +19,11 @@ services:
         VITE_LIVE_BASE_URL: ${VITE_LIVE_BASE_URL}
         VITE_LIVE_BASE_PATH: ${VITE_LIVE_BASE_PATH:-/live}
     restart: always
+    # bare names (web/api/admin/space/live) resolve to foreign containers on
+    # the shared app-network — the proxy reaches us via these unique aliases.
+    networks:
+      default:
+        aliases: [plane-web]
     depends_on:
       - api
 
@@ -37,6 +42,9 @@ services:
         VITE_LIVE_BASE_URL: ${VITE_LIVE_BASE_URL}
         VITE_LIVE_BASE_PATH: ${VITE_LIVE_BASE_PATH:-/live}
     restart: always
+    networks:
+      default:
+        aliases: [plane-admin]
     depends_on:
       - api
       - web
@@ -56,6 +64,9 @@ services:
         VITE_LIVE_BASE_URL: ${VITE_LIVE_BASE_URL}
         VITE_LIVE_BASE_PATH: ${VITE_LIVE_BASE_PATH:-/live}
     restart: always
+    networks:
+      default:
+        aliases: [plane-space]
     depends_on:
       - api
       - web
@@ -70,6 +81,9 @@ services:
     command: ./bin/docker-entrypoint-api.sh
     env_file:
       - .env
+    networks:
+      default:
+        aliases: [plane-api]
     depends_on:
       - plane-db
       - plane-redis
@@ -131,6 +145,9 @@ services:
     restart: always
     env_file:
       - .env
+    networks:
+      default:
+        aliases: [plane-live]
 
   plane-db:
     image: postgres:15.7-alpine
@@ -178,18 +195,17 @@ services:
   # /god-mode → admin, /live → live, /uploads → minio.
   proxy:
     build:
-      context: ./apps/proxy
-      dockerfile: Dockerfile.ce
+      context: .
+      dockerfile: venus/Dockerfile.proxy
     restart: always
     ports:
       - "127.0.0.1:3030:80"
     environment:
+      # CERT_* left unset on purpose — empty values break the Caddyfile
+      # 'acme_ca' directive; its built-in defaults handle plain :80 fine.
       FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT:-5242880}
       BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-uploads}
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
-      CERT_EMAIL: ${CERT_EMAIL:-}
-      CERT_ACME_CA: ${CERT_ACME_CA:-}
-      CERT_ACME_DNS: ${CERT_ACME_DNS:-}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-0.0.0.0/0}
     networks:
       - default

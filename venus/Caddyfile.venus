@@ -1,0 +1,36 @@
+# Same routes as upstream Caddyfile.ce but pointed at plane-* aliases.
+# Bare names (web/api/admin/space/live) collide with aliases other projects
+# publish on the shared app-network, which made caddy proxy to foreign
+# containers. The plane-* aliases only exist on this project's network.
+
+(plane_proxy) {
+	request_body {
+		max_size {$FILE_SIZE_LIMIT}
+	}
+	redir /spaces /spaces/ permanent
+	reverse_proxy /spaces/* plane-space:3000
+	redir /god-mode /god-mode/ permanent
+	reverse_proxy /god-mode/* plane-admin:3000
+
+	reverse_proxy /live/* plane-live:3000
+	reverse_proxy /api/* plane-api:8000
+	reverse_proxy /auth/* plane-api:8000
+	reverse_proxy /static/* plane-api:8000
+	reverse_proxy /{$BUCKET_NAME}/* plane-minio:9000
+	reverse_proxy /{$BUCKET_NAME} plane-minio:9000
+	reverse_proxy /* plane-web:3000
+}
+{
+	{$CERT_EMAIL}
+	acme_ca {$CERT_ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+	{$CERT_ACME_DNS}
+	servers {
+		max_header_size 25MB
+		client_ip_headers X-Forwarded-For X-Real-IP
+		client_ip_headers X-Forwarded-Host
+		trusted_proxies static {$TRUSTED_PROXIES:0.0.0.0/0}
+	}
+}
+{$SITE_ADDRESS} {
+	import plane_proxy
+}
