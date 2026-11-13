@@ -1,0 +1,80 @@
+# CI/CD: GitHub Actions → VPS Oracle (Jalur A: build native ARM64 di VPS)
+# Same pattern as outline/code-push deploy.yml.
+#
+# Server-side layout:
+#   /opt/apps/plane/                    rsync target (this repo)
+#   /opt/apps/plane/docker-compose.yml  copied from venus/docker-compose.yml
+#   /opt/apps/plane/.env                env secrets (rsync excludes .env*)
+#   /usr/local/bin/deploy-app           builds + ups the compose project
+#
+# First deploy: create /opt/apps/plane/.env on the VPS before the first
+# green run (rsync excludes .env* so it survives every deploy).
+
+name: build-test-deploy
+
+on:
+  push:
+    branches: [master-dev] # auto-deploy ke plane.<dev-domain>; master = prod nanti
+  workflow_dispatch: {}
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST || '129.225.0.136' }}
+  VPS_USER: ubuntu
+  APP_NAME: plane
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: build shared types
+        run: pnpm --filter=@plane/types build
+
+      - name: python compile check (api patch)
+        run: |
+          python -m py_compile \
+            apps/api/plane/authentication/provider/oauth/venusverse.py \
+            apps/api/plane/authentication/views/app/venusverse.py \
+            apps/api/plane/authentication/views/space/venusverse.py
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency: deploy-plane
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Siapkan kunci SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -t ed25519 "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Kirim sumber ke VPS (rsync)
+        run: |
+          rsync -az --delete \
+            --exclude '.git' --exclude 'node_modules' --exclude '**/node_modules' \
+            --exclude '.env*' --exclude 'dist/' --exclude 'build/' \
+            --exclude 'docker-compose.override.yml' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "$VPS_USER@$VPS_HOST:/opt/apps/$APP_NAME/"
+
+      - name: Pasang compose VenusVerse & jalankan
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" \
+            "cp /opt/apps/$APP_NAME/venus/docker-compose.yml /opt/apps/$APP_NAME/docker-compose.yml && deploy-app $APP_NAME"

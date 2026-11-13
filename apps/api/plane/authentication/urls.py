@@ -44,6 +44,10 @@ from .views import (
     GiteaOauthInitiateEndpoint,
     GiteaCallbackSpaceEndpoint,
     GiteaOauthInitiateSpaceEndpoint,
+    VenusVerseCallbackEndpoint,
+    VenusVerseOauthInitiateEndpoint,
+    VenusVerseCallbackSpaceEndpoint,
+    VenusVerseOauthInitiateSpaceEndpoint,
 )
 
 urlpatterns = [
@@ -149,5 +153,18 @@ urlpatterns = [
         "spaces/gitea/callback/",
         GiteaCallbackSpaceEndpoint.as_view(),
         name="space-gitea-callback",
+    ),
+    ## VenusVerse Oauth
+    path("venusverse/", VenusVerseOauthInitiateEndpoint.as_view(), name="venusverse-initiate"),
+    path("venusverse/callback/", VenusVerseCallbackEndpoint.as_view(), name="venusverse-callback"),
+    path(
+        "spaces/venusverse/",
+        VenusVerseOauthInitiateSpaceEndpoint.as_view(),
+        name="space-venusverse-initiate",
+    ),
+    path(
+        "spaces/venusverse/callback/",
+        VenusVerseCallbackSpaceEndpoint.as_view(),
+        name="space-venusverse-callback",
     ),
 ]

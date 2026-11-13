@@ -1,0 +1,45 @@
+# Dev data plane only — run plane itself with `pnpm dev` / gunicorn locally.
+# Ports offset from sso (5434/6381) and outline (5435/6382) dev stacks.
+
+services:
+  plane-db:
+    image: postgres:15.7-alpine
+    ports:
+      - "127.0.0.1:5436:5432"
+    environment:
+      POSTGRES_USER: plane
+      POSTGRES_PASSWORD: plane-dev
+      POSTGRES_DB: plane
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  plane-redis:
+    image: valkey/valkey:7.2.11-alpine
+    ports:
+      - "127.0.0.1:6383:6379"
+
+  plane-mq:
+    image: rabbitmq:3.13.6-management-alpine
+    ports:
+      - "127.0.0.1:5673:5672"
+      - "127.0.0.1:15673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: plane
+      RABBITMQ_DEFAULT_PASS: plane-dev
+      RABBITMQ_DEFAULT_VHOST: plane
+
+  plane-minio:
+    image: docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    command: server /export --console-address ":9090"
+    ports:
+      - "127.0.0.1:9010:9000"
+      - "127.0.0.1:9091:9090"
+    environment:
+      MINIO_ROOT_USER: minio-dev
+      MINIO_ROOT_PASSWORD: minio-dev-pass
+    volumes:
+      - uploads:/export
+
+volumes:
+  pgdata:
+  uploads:
