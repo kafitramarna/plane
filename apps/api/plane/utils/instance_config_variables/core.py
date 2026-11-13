@@ -162,6 +162,39 @@ gitea_config_variables = [
     },
 ]
 
+venus_config_variables = [
+    {
+        "key": "IS_VENUS_ENABLED",
+        "value": os.environ.get("IS_VENUS_ENABLED", "0"),
+        "category": "VENUS",
+        "is_encrypted": False,
+    },
+    {
+        "key": "VENUS_HOST",
+        "value": os.environ.get("VENUS_HOST"),
+        "category": "VENUS",
+        "is_encrypted": False,
+    },
+    {
+        "key": "VENUS_CLIENT_ID",
+        "value": os.environ.get("VENUS_CLIENT_ID"),
+        "category": "VENUS",
+        "is_encrypted": False,
+    },
+    {
+        "key": "VENUS_CLIENT_SECRET",
+        "value": os.environ.get("VENUS_CLIENT_SECRET"),
+        "category": "VENUS",
+        "is_encrypted": True,
+    },
+    {
+        "key": "ENABLE_VENUS_SYNC",
+        "value": os.environ.get("ENABLE_VENUS_SYNC", "0"),
+        "category": "VENUS",
+        "is_encrypted": False,
+    },
+]
+
 smtp_config_variables = [
     {
         "key": "ENABLE_SMTP",
@@ -257,6 +290,7 @@ core_config_variables = [
     *github_config_variables,
     *gitlab_config_variables,
     *gitea_config_variables,
+    *venus_config_variables,
     *smtp_config_variables,
     *llm_config_variables,
     *unsplash_config_variables,
